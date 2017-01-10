@@ -47,10 +47,10 @@ on early-boot
     # set RLIMIT_MEMLOCK to 64MB
     setrlimit 8 67108864 67108864
     # Allow subsystem (modem etc) debugging
-    #write /sys/module/subsystem_restart/parameters/enable_debug ${persist.sys.ssr.enable_debug}
-    #write /sys/module/pil_msa/parameters/pbl_mba_boot_timeout_ms ${persist.sys.mba_boot_timeout}
-    #write /sys/module/pil_msa/parameters/modem_auth_timeout_ms ${persist.sys.modem_auth_timeout}
-    #write /sys/module/peripheral_loader/parameters/proxy_timeout_ms ${persist.sys.pil_proxy_timeout}
+    write /sys/module/subsystem_restart/parameters/enable_debug ${persist.sys.ssr.enable_debug}
+    write /sys/module/pil_msa/parameters/pbl_mba_boot_timeout_ms ${persist.sys.mba_boot_timeout}
+    write /sys/module/pil_msa/parameters/modem_auth_timeout_ms ${persist.sys.modem_auth_timeout}
+    write /sys/module/peripheral_loader/parameters/proxy_timeout_ms ${persist.sys.pil_proxy_timeout}
     write /sys/kernel/boot_adsp/boot 1
 
 on boot
@@ -260,7 +260,7 @@ on post-fs-data
 
     #Create the symlink to qcn wpa_supplicant folder for ar6000 wpa_supplicant
     mkdir /data/system 0775 system system
-    #symlink /data/misc/wifi/wpa_supplicant /data/system/wpa_supplicant
+    symlink /data/misc/wifi/wpa_supplicant /data/system/wpa_supplicant
 
     #Create directories for Location services
     mkdir /data/misc/location 0770 gps gps
@@ -316,26 +316,22 @@ service qfintverify /sbin/qfintverify
 
 service ssr_setup /system/bin/ssr_setup
     oneshot
-    disabled
 
 service ss_ramdump /system/bin/subsystem_ramdump
     class main
     user system
     group system
-    disabled
 
 service perfd /system/vendor/bin/perfd
    class main
    user root
    group system
    socket perfd seqpacket 0666 root system
-   writepid /dev/cpuset/system-background/tasks
 
 service iop /system/bin/iop
     class main
     user root
     group root
-    writepid /dev/cpuset/system-background/tasks
 
 on property:persist.sys.ssr.restart_level=*
     start ssr_setup
@@ -388,7 +384,7 @@ on property:init.svc.wpa_supplicant=stopped
 
 on property:bluetooth.isEnabled=true
     start btwlancoex
-    write /sys/class/bluetooth/hci0/idle_timeout 7000
+    write /sys/class/bluetooth/hci0/idle_timeout 0
 
 on property:bluetooth.sap.status=running
     start bt-sap
@@ -422,14 +418,14 @@ on property:vold.decrypt=trigger_restart_framework
     start config_bluetooth
 
 on property:persist.env.fastdorm.enabled=true
-    setprop persist.radio.data_no_toggle 1
+    setprop persist.radio.data_no_toggle 0
 
 service cnd /system/bin/cnd
     class main
     socket cnd stream 660 root inet
 
 service dpmd /system/bin/dpmd
-    class late_start
+    class main
     socket dpmd stream 660 root system
 
 service irsc_util /system/bin/irsc_util "/etc/sec_config"
@@ -459,10 +455,9 @@ on property:wc_transport.start_hci=false
     stop start_hci_filter
 
 service start_hci_filter /system/bin/wcnss_filter
-    class late_start
+    class main
     user bluetooth
     group bluetooth qcom_diag
-    disabled
 
 on property:wc_transport.start_root=true
     start hci_filter_root
@@ -471,10 +466,9 @@ on property:wc_transport.start_root=false
     stop hci_filter_root
 
 service hci_filter_root /system/bin/wcnss_filter
-    class late_start
+    class main
     user bluetooth
     group bluetooth qcom_diag net_bt_stack system
-    disabled
 
 service config_bluetooth /system/bin/sh /system/etc/init.qcom.bt.sh "onboot"
     class core
@@ -482,10 +476,9 @@ service config_bluetooth /system/bin/sh /system/etc/init.qcom.bt.sh "onboot"
     oneshot
 
 service hciattach /system/bin/sh /system/etc/init.qcom.bt.sh
-    class late_start
+    class main
     user bluetooth
     group bluetooth net_bt_admin
-    disabled
     oneshot
 
 on property:bluetooth.hciattach=true
@@ -495,45 +488,39 @@ on property:bluetooth.hciattach=false
     setprop bluetooth.status off
 
 service hciattach_ath3k /system/bin/sh /system/etc/init.ath3k.bt.sh
-     class late_start
+     class main
      user bluetooth
      group system bluetooth net_bt_admin misc
-     disabled
      oneshot
 
 service bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
-    class late_start
+    class main
     user bluetooth
     group bluetooth net_bt_admin inet
-    disabled
     oneshot
 
 service bt-sap /system/bin/sapd 15
     user bluetooth
     group bluetooth net_bt_admin
-    class late_start
-    disabled
+    class main
     oneshot
 
 service btsnoop /system/bin/btsnoop
    user bluetooth
    group bluetooth net_bt_admin sdcard_rw sdcard_r media_rw
-   class late_start
-   disabled
+   class main
    oneshot
 
 service ftmd /system/bin/logwrapper /system/bin/ftmdaemon
-    class late_start
+    class main
     user root
     group bluetooth net_bt_admin misc net_bt_stack diag net_bt
-    disabled
     oneshot
 
 service port-bridge /system/bin/port-bridge /dev/mhi_pipe_32 /dev/ttyGS0
     class main
     user radio system
     group radio system inet
-    disabled
 
 # QMUX must be in multiple groups to support external process connections
 service qmuxd /system/bin/qmuxd
@@ -561,11 +548,9 @@ service qti /system/vendor/bin/qti
     group radio net_raw diag usb net_admin
 
 service sensors /system/bin/sensors.qcom
-    class late_start
+    class main
     user root
     group root
-    writepid /dev/cpuset/system-background/tasks
-    disabled
 
 on property:ro.use_data_netmgrd=false
     # netmgr not supported on specific target
@@ -580,28 +565,24 @@ on property:sys.sysctl.tcp_adv_win_scale=*
     write /proc/sys/net/ipv4/tcp_adv_win_scale ${sys.sysctl.tcp_adv_win_scale}
 
 service btwlancoex /system/bin/sh /system/etc/init.qcom.coex.sh
-    class late_start
+    class main
     user bluetooth
     group bluetooth net_bt_admin inet net_admin net_raw
-    disabled
     oneshot
 
 service amp_init /system/bin/amploader -i
-    class late_start
+    class main
     user root
-    disabled
     oneshot
 
 service amp_load /system/bin/amploader -l 7000
-    class late_start
+    class main
     user root
-    disabled
     oneshot
 
 service amp_unload /system/bin/amploader -u
-    class late_start
+    class main
     user root
-    disabled
     oneshot
 
 #Reduce wifi log amount, remove -dd
@@ -639,30 +620,25 @@ service wpa_supplicant /system/bin/wpa_supplicant \
     oneshot
 
 service dhcpcd_wlan0 /system/bin/dhcpcd -ABKLG
-    class late_start
-    disabled
+    class main
     oneshot
 
 service dhcpcd_p2p /system/bin/dhcpcd -ABKLG
-    class late_start
-    disabled
+    class main
     oneshot
 
 service iprenew_wlan0 /system/bin/dhcpcd -n
-    class late_start
-    disabled
+    class main
     oneshot
 
 service iprenew_p2p /system/bin/dhcpcd -n
-    class late_start
-    disabled
+    class main
     oneshot
 
 service cnss_diag /system/bin/cnss_diag -q -f
     class main
     user root
     group root
-    disabled
 
 on property:cnss_diag.load=true
     start cnss_diag
@@ -671,48 +647,40 @@ on property:cnss_diag.load=false
     stop cnss_diag
 
 service cnss-daemon /system/bin/cnss-daemon -n -l
-    class late_start
+    class main
 
 service dhcpcd_bt-pan /system/bin/dhcpcd -BKLG
-    class late_start
-    disabled
+    class main
     oneshot
 
 service iprenew_bt-pan /system/bin/dhcpcd -n
-    class late_start
-    disabled
+    class main
     oneshot
 
 service dhcpcd_bnep0 /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service dhcpcd_bnep1 /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service dhcpcd_bnep2 /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service dhcpcd_bnep3 /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service dhcpcd_bnep4 /system/bin/dhcpcd -BKLG
-    disabled
     oneshot
 
 service loc_launcher /system/bin/loc_launcher
     #loc_launcher will start as root and set its uid to gps
-    class late_start
+    class main
     group gps inet net_raw diag net_admin wifi
 
 service fm_dl /system/bin/sh /system/etc/init.qcom.fm.sh
-    class late_start
+    class main
     user root
     group system
-    disabled
     oneshot
 
 on property:crypto.driver.load=1
@@ -720,9 +688,8 @@ on property:crypto.driver.load=1
      insmod /system/lib/modules/qcedev.ko
 
 service drmdiag /system/bin/drmdiagapp
-    class late_start
+    class main
      user root
-     disabled
      oneshot
 
 on property:drmdiag.load=1
@@ -732,33 +699,29 @@ on property:drmdiag.load=0
     stop drmdiag
 
 service qcom-sh /system/bin/sh /init.qcom.sh
-    class late_start
+    class main
     user root
     oneshot
 
 service qcom-post-boot /system/bin/sh /system/etc/init.qcom.post_boot.sh
-    class late_start
+    class main
     user root
-    disabled
     oneshot
 
 service qti-testscripts /system/bin/sh /system/etc/init.qcom.testscripts.sh
-    class late_start
+    class main
     user root
-    disabled
     oneshot
     seclabel u:r:qti-testscripts:s0
 
 service wifi-sdio-on /system/bin/sh /system/etc/init.qcom.sdio.sh
-    class late_start
+    class main
     group wifi inet
-    disabled
     oneshot
 
 service wifi-crda /system/bin/sh /system/etc/init.crda.sh
-   class late_start
+   class main
    user root
-   disabled
    oneshot
 
 on property:sys.boot_completed=1
@@ -766,23 +729,21 @@ on property:sys.boot_completed=1
     start qti-testscripts
 
 service atfwd /system/bin/ATFWD-daemon
-    class late_start
+    class main
     user system
     group system radio
 
 #Reduce wifi log amount, remove -dd
-#service hostapd /system/bin/hostapd -dd /data/hostapd/hostapd.conf
+service hostapd /system/bin/hostapd -dd /data/hostapd/hostapd.conf
 service hostapd /system/bin/hostapd /data/hostapd/hostapd.conf
-    class late_start
+    class main
     user root
     group root
     oneshot
-    disabled
 
 service ims_regmanager /system/bin/exe-ims-regmanagerprocessnative
-    class late_start
+    class main
     group net_bt_admin inet radio wifi
-    disabled
 
 on property:persist.ims.regmanager.mode=1
     start ims_regmanager
@@ -794,7 +755,6 @@ on property:ro.data.large_tcp_window_size=true
 service battery_monitor /system/bin/battery_monitor
     user system
     group system
-    disabled
 
 service ril-daemon2 /system/bin/rild -c 2
     class main
@@ -808,36 +768,30 @@ service ril-daemon3 /system/bin/rild -c 3
     socket rild3 stream 660 root radio
     socket rild-debug3 stream 660 radio system
     user root
-    disabled
     group radio cache inet misc audio sdcard_r sdcard_rw qcom_diag diag log
 
 service profiler_daemon /system/bin/profiler_daemon
-    class late_start
+    class main
     user root
     group root
-    disabled
 
 service hcidump /system/bin/sh /system/etc/hcidump.sh
     user bluetooth
     group bluetooth system net_bt_admin net_admin
-    disabled
     oneshot
 
 service ssr_diag /system/bin/ssr_diag
-    class late_start
+    class main
     user system
     group system
-    disabled
 
 # Define fastmmi
 service fastmmi /system/bin/mmi
     user root
     group root
-    disabled
 
 service fastmmisrv /system/bin/sh /init.qcom.factory.sh
     user root
-    disabled
     oneshot
 
 on mmi
@@ -860,7 +814,6 @@ on ffbm
 service hvdcp /system/bin/hvdcp
     class core
     user root
-    disabled
 
 on property:persist.usb.hvdcp.detect=true
     start hvdcp
@@ -871,10 +824,8 @@ on property:persist.usb.hvdcp.detect=false
 service charger_monitor /system/bin/charger_monitor
     user root
     group root
-    disabled
 
 service qbcharger /charger -m 1
-    disabled
     oneshot
 
 on property:sys.qbcharger.enable=true
@@ -884,23 +835,20 @@ on property:sys.qbcharger.enable=false
     stop qbcharger
 
 service diag_mdlog_start /system/bin/diag_mdlog
-    class late_start
+    class main
     user shell
     group system diag sdcard_rw sdcard_r media_rw
-    disabled
     oneshot
 
 service diag_mdlog_stop /system/bin/diag_mdlog -k
-    class late_start
+    class main
     user shell
     group system diag sdcard_rw sdcard_r media_rw
-    disabled
     oneshot
 
 service qlogd /system/xbin/qlogd
     socket qlogd stream 0662 system system
     class main
-    disabled
 on property:persist.sys.qlogd=1
     start qlogd
 on property:persist.sys.qlogd=0
